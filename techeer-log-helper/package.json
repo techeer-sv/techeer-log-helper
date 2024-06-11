@@ -1,7 +1,7 @@
 {
   "name": "techeer-log-helper",
-  "displayName": "Techeer Log Helper",
-  "description": "log helper and translator",
+  "displayName": "techeer-log-helper",
+  "description": "techeer log helper for korean",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.90.0"

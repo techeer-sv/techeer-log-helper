@@ -16,7 +16,7 @@ export function activate(context: vscode.ExtensionContext) {
 	const disposable = vscode.commands.registerCommand('techeer-log-helper.helloWorld', () => {
 		// The code you place here will be executed every time your command is executed
 		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from Techeer Log Helper!');
+		vscode.window.showInformationMessage('Hello World from techeer-log-helper!');
 	});
 
 	context.subscriptions.push(disposable);
