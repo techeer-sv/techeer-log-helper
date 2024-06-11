@@ -1,7 +1,7 @@
 {
-  "name": "techeer-log-helper",
-  "displayName": "techeer-log-helper",
-  "description": "techeer log helper for korean",
+  "name": "techeer-log-translator",
+  "displayName": "Techeer Log Translator",
+  "description": "",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.90.0"
@@ -14,10 +14,29 @@
   "contributes": {
     "commands": [
       {
-        "command": "techeer-log-helper.helloWorld",
-        "title": "Hello World"
+        "command": "extension.techeer.logTranslator",
+        "title": "Techeer: Log Translator"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Techeer Log Translator",
+      "properties": {
+        "techeerLogTranslator.enable": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the extension"
+        },
+        "techeerLogTranslator.logFormat": {
+          "type": "string",
+          "default": "json",
+          "enum": [
+            "json",
+            "text"
+          ],
+          "description": "The log format to translate"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
