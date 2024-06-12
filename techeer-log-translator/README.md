@@ -1,6 +1,6 @@
-# techeer-log-helper README
+# techeer-log-translator README
 
-This is the README for your extension "techeer-log-helper". After writing up a brief description, we recommend including the following sections.
+This is the README for your extension "techeer-log-translator". After writing up a brief description, we recommend including the following sections.
 
 ## Features
 
