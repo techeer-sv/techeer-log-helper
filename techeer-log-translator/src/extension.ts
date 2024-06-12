@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+var ncp = require("copy-paste");
 
 let terminalOutput = {};
 
@@ -60,25 +61,46 @@ function cleanupCacheData(data: string): string {
 
 function runClipboardMode() {
 	vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
-	  vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
-		vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
-		  vscode.commands.executeCommand('workbench.action.files.newUntitledFile').then(() => {
-			vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-		  });
-		});
-	  });
+	  	vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
+			vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
+				let txt = "";
+				ncp.paste(function(err: any, content: any) {
+					if (err) {
+						vscode.window.showErrorMessage('Failed to paste terminal content');
+						return;
+					}
+					txt = content;
+					const new_text = filterPythonOutputs(txt);
+					ncp.copy(new_text, function(err: any) {
+						if (err) {
+							vscode.window.showErrorMessage('Failed to paste terminal content');
+							return;
+						}
+					});
+				});
+		  		vscode.commands.executeCommand('workbench.action.files.newUntitledFile').then(() => {
+					vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+		  		});
+			});
+	  	});
 	});
-  }
+}
 
-// function registerTerminalForCapture(terminal: vscode.Terminal) {
-// 	terminal.processId.then(terminalId => {
-// 	  (<any>terminalOutput)[terminalId] = "";
-// 	  (<any>terminal).onDidWriteData((data: any) => {
-// 		// TODO:
-// 		//   - Need to remove (or handle) backspace
-// 		//   - not sure what to do about carriage return???
-// 		//   - might have some odd output
-// 		(<any>terminalOutput)[terminalId] += data;
-// 	  });
-// 	});
-//   }
+function filterNodeErrors(content: string): string {
+    const nodeErrorPattern = /^(?:\w+Error:\s.*|Error:.*)(?:\n(?:\s+at.*|.*:\d+:\d+)?)*$/gm;
+    const lines = content.split('\n');
+    const filteredLines = lines.filter(line => !nodeErrorPattern.test(line));
+    return filteredLines.join('\n');
+}
+
+
+function filterPythonOutputs(content: string): string {
+    const pythonErrorPattern = /^(Traceback[\s\S]*?)(?:Error:.*$)/gm;
+    const match = pythonErrorPattern.exec(content);
+    if (match && match.length > 1) {
+        return match[0];
+    }
+    return '';
+}
+
+
