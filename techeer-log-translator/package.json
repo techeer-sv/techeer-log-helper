@@ -14,8 +14,16 @@
   "contributes": {
     "commands": [
       {
-        "command": "extension.techeer.logTranslator",
-        "title": "Techeer: Log Translator"
+        "command": "extension.techeer.logTranslatorAll",
+        "title": "Techeer: Log Translator All"
+      },
+      {
+        "command": "extension.techeer.logTranslatorPython",
+        "title": "Techeer: Log Translator Python"
+      },
+      {
+        "command": "extension.techeer.logTranslatorNode",
+        "title": "Techeer: Log Translator Node"
       }
     ],
     "configuration": {
@@ -26,6 +34,11 @@
           "default": true,
           "description": "Enable the extension"
         },
+        "techeerLogTranslator.translate": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable translation"
+        },
         "techeerLogTranslator.logFormat": {
           "type": "string",
           "default": "json",
@@ -34,6 +47,11 @@
             "text"
           ],
           "description": "The log format to translate"
+        },
+        "techeerLogTranslator.apiToken": {
+          "type": "string",
+          "default": "",
+          "description": "Translator API Token"
         }
       }
     }
