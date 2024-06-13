@@ -1,106 +1,112 @@
 import * as vscode from 'vscode';
-var ncp = require("copy-paste");
-
-let terminalOutput = {};
+const ncp = require("copy-paste");
+// import * as axios from 'axios';
 
 export function activate(context: vscode.ExtensionContext) {
-	let options = vscode.workspace.getConfiguration('techeerLogTranslator');
+    console.log('extension is now active');
 
-	console.log('extension is now active');
-	const disposable = vscode.commands.registerCommand('extension.techeer.logTranslator', () => {
-		if (options.get("enable") === false) {
-			vscode.window.showInformationMessage("Techeer Log Translator가 꺼져있습니다. 설정에서 활성화해주세요.");
-			return;
-		} else {
-			vscode.window.showInformationMessage("Techeer Log Translator가 켜져있습니다.");
-		
-		}
-		const terminals = <vscode.Terminal[]>(<any>vscode.window).terminals;
-		if (terminals.length <= 0) {
-		vscode.window.showWarningMessage('No terminals found, cannot run copy');
-		return;
-		}
-		runClipboardMode();
-		// runCacheMode();
-	});
+    const disposable = vscode.commands.registerCommand('extension.techeer.logTranslatorAll', () => {
+        runTranslation('all');
+    });
 
-	context.subscriptions.push(disposable);
+    const disposable2 = vscode.commands.registerCommand('extension.techeer.logTranslatorPython', () => {
+        runTranslation('python');
+    });
+
+    const disposable3 = vscode.commands.registerCommand('extension.techeer.logTranslatorNode', () => {
+        runTranslation('node');
+    });
+
+    context.subscriptions.push(disposable, disposable2, disposable3);
 }
 
 export function deactivate() {
-	terminalOutput = {};
+    console.log('extension is now deactivated');
 }
 
-function runCacheMode() {
-	let terminal = vscode.window.activeTerminal;
-	if (terminal === undefined) {
-		vscode.window.showWarningMessage('No active terminal found, can not capture');
-		return;
-	}
-	terminal.processId.then(terminalId => {
-	  	vscode.commands.executeCommand('workbench.action.files.newUntitledFile').then(() => {
-			let editor = vscode.window.activeTextEditor;
-			if (editor === undefined) {
-			vscode.window.showWarningMessage('Failed to find active editor to paste terminal content');
-			return;
-			}
-			if (terminalId === undefined || terminalId === null) {
-			vscode.window.showWarningMessage('Failed to find terminal ID');
-			return;
-			}
-			let cache = cleanupCacheData((<any>terminalOutput)[terminalId]);
-			editor.edit(builder => {
-				builder.insert(new vscode.Position(0, 0), cache);
-			});
-	  	});
-	});
-}
-function cleanupCacheData(data: string): string {
-	return data.replace(new RegExp('\x1b\[[0-9;]*m', 'g'), '');
-}
+async function runTranslation(mode: string) {
+    const options = vscode.workspace.getConfiguration('techeerLogTranslator');
 
-function runClipboardMode() {
-	vscode.commands.executeCommand('workbench.action.terminal.selectAll').then(() => {
-	  	vscode.commands.executeCommand('workbench.action.terminal.copySelection').then(() => {
-			vscode.commands.executeCommand('workbench.action.terminal.clearSelection').then(() => {
-				let txt = "";
-				ncp.paste(function(err: any, content: any) {
-					if (err) {
-						vscode.window.showErrorMessage('Failed to paste terminal content');
-						return;
-					}
-					txt = content;
-					const new_text = filterPythonOutputs(txt);
-					ncp.copy(new_text, function(err: any) {
-						if (err) {
-							vscode.window.showErrorMessage('Failed to paste terminal content');
-							return;
-						}
-					});
-				});
-		  		vscode.commands.executeCommand('workbench.action.files.newUntitledFile').then(() => {
-					vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-		  		});
-			});
-	  	});
-	});
+    if (!options.get("enable")) {
+        vscode.window.showInformationMessage("Techeer Log Translator가 꺼져있습니다. 설정에서 활성화해주세요.");
+        return;
+    }
+
+    vscode.window.showInformationMessage("Techeer Log Translator가 켜져있습니다.");
+
+    const terminals = vscode.window.terminals;
+    if (!terminals || terminals.length === 0) {
+        vscode.window.showWarningMessage('No terminals found, cannot run copy');
+        return;
+    }
+
+    try {
+        await vscode.commands.executeCommand('workbench.action.terminal.selectAll');
+        await vscode.commands.executeCommand('workbench.action.terminal.copySelection');
+        await vscode.commands.executeCommand('workbench.action.terminal.clearSelection');
+
+        const content = await new Promise<string>((resolve, reject) => {
+            ncp.paste((err: any, content: any) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve(content);
+                }
+            });
+        });
+
+        let filteredContent = '';
+        if (mode === 'python') {
+            filteredContent = filterPythonOutputs(content);
+        } else if (mode === 'node') {
+            filteredContent = filterNodeErrors(content);
+        } else {
+			filteredContent = content;
+		}
+
+        await new Promise<void>((resolve, reject) => {
+            ncp.copy(filteredContent, (err: any) => {
+                if (err) {
+                    reject(err);
+                } else {
+                    resolve();
+                }
+            });
+        });
+
+        await vscode.commands.executeCommand('workbench.action.files.newUntitledFile');
+        await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+
+        console.log(`Translation completed for mode: ${mode}`);
+    } catch (error) {
+        console.error('Error occurred during translation:', error);
+        vscode.window.showErrorMessage('Failed to perform translation');
+    }
 }
 
 function filterNodeErrors(content: string): string {
-    const nodeErrorPattern = /^(?:\w+Error:\s.*|Error:.*)(?:\n(?:\s+at.*|.*:\d+:\d+)?)*$/gm;
-    const lines = content.split('\n');
-    const filteredLines = lines.filter(line => !nodeErrorPattern.test(line));
-    return filteredLines.join('\n');
-}
+    let result = '';
+    const nodeErrorPattern1 = /(?:\w+Error|Error):.*(?:\n\s*at.*)*(?<![.?!])$/gm;
+    const nodeErrorPattern2 = /^(?!(?:\s*at|\t)).*\b(?:js|ts):.*$/gm;
+    let match1, match2;
 
+    while ((match1 = nodeErrorPattern1.exec(content)) !== null && (match2 = nodeErrorPattern2.exec(content)) !== null) {
+        result += `오류 위치 => ${match2[0]}\n`;
+        result += `오류 내용 => ${match1[0]}\n`;
+    }
+
+    return result.trim();
+}
 
 function filterPythonOutputs(content: string): string {
-    const pythonErrorPattern = /^(Traceback[\s\S]*?)(?:Error:.*$)/gm;
-    const match = pythonErrorPattern.exec(content);
-    if (match && match.length > 1) {
-        return match[0];
+    let result = '';
+    // const pythonErrorPattern = /^(Traceback[\s\S]*?)(?:Error:.*$)/gm;
+	const pythonErrorPattern =/^Traceback[\s\S]*?(?:\n.*[.?!])?Error.*[.?!]$/gm;
+    let match;
+
+    while ((match = pythonErrorPattern.exec(content)) !== null) {
+        result += `오류 시작 \n${match[0]}\n오류 끝\n\n`;
     }
-    return '';
+
+    return result.trim();
 }
-
-
